@@ -21,10 +21,10 @@ use yii\db\Schema;
 use yii\base\Application;
 
 class Setting extends \yii\base\Component {
-	public $setting_table = 'setting';
+	public $settingTable = 'setting';
 	protected $_toBeSave = array ();
 	protected $_toBeDelete = array ();
-	protected $_deleteCategoriesFromDatabase = array ();
+	protected $_catToBeDel = array ();
 	protected $_cacheFlush = array ();
 	protected $_items = array ();
 
@@ -35,9 +35,9 @@ class Setting extends \yii\base\Component {
 	 *
 	 */
 	public function init() {
-		if (YII_DEBUG && ! Yii::$app->getDb ()->getTableSchema ( "{{%" . $this->setting_table . "}}" )) {
+		if (YII_DEBUG && ! Yii::$app->getDb ()->getTableSchema ( "{{%" . $this->settingTable . "}}" )) {
 			Yii::$app->db->createCommand (
-				\Yii::$app->getDb()->getQueryBuilder()->createTable ( "{{%" . $this->setting_table . "}}", [
+				\Yii::$app->getDb()->getQueryBuilder()->createTable ( "{{%" . $this->settingTable . "}}", [
 					'category' => Schema::TYPE_STRING,
 					'key' => Schema::TYPE_STRING,
 					'value' => Schema::TYPE_TEXT,
@@ -45,7 +45,7 @@ class Setting extends \yii\base\Component {
 			)
 			 )->execute ();
 			Yii::$app->db->createCommand (
-				Yii::$app->getDb ()->getQueryBuilder()->addPrimaryKey( 'category_key', "{{%" . $this->setting_table . "}}", 'category,key' )
+				Yii::$app->getDb ()->getQueryBuilder()->addPrimaryKey( 'category_key', "{{%" . $this->settingTable . "}}", 'category,key' )
 			)->execute ();
 		}
 		$this->on (Application::EVENT_AFTER_REQUEST, [$this, 'commit']);
@@ -103,7 +103,7 @@ class Setting extends \yii\base\Component {
 	 */
 	public function delete($category = 'system', $key = '') {
 		if (! empty ( $category ) && empty ( $key )) {
-			$this->_deleteCategoriesFromDatabase [] = $category;
+			$this->_catToBeDel [] = $category;
 			return;
 		}
 		if (is_array ( $key )) {
@@ -128,7 +128,7 @@ class Setting extends \yii\base\Component {
 		$items = Yii::$app->cache->get ( $category . '_setting' );
 		if (! $items) {
 			$result = Yii::$app->getDb()->createCommand (
-					"SELECT * FROM {{%" . $this->setting_table . "}} WHERE [[category]]=:cat", [
+					"SELECT * FROM {{%" . $this->settingTable . "}} WHERE [[category]]=:cat", [
 						':cat' => $category,
 				])->queryAll();
 			if (empty ( $result )) {
@@ -167,7 +167,7 @@ class Setting extends \yii\base\Component {
 	 */
 	private function addDbItem($category = 'system', $key, $value) {
 		$result = Yii::$app->getDb()->createCommand(
-				"SELECT * FROM {{%" . $this->setting_table . "}} WHERE [[category]]=:cat AND [[key]]=:key LIMIT 1", [
+				"SELECT * FROM {{%" . $this->settingTable . "}} WHERE [[category]]=:cat AND [[key]]=:key LIMIT 1", [
 					':cat' => $category,
 					':key' => $key
 			] )->queryOne();
@@ -176,7 +176,7 @@ class Setting extends \yii\base\Component {
 
 		if (! $result ) {
 			$command = Yii::$app->getDb()->createCommand (
-					"INSERT INTO {{%" . $this->setting_table . "}} ([[category]], [[key]], [[value]]) VALUES(:cat,:key,:value)",
+					"INSERT INTO {{%" . $this->settingTable . "}} ([[category]], [[key]], [[value]]) VALUES(:cat,:key,:value)",
 					[
 						':cat' => $category,
 						':key' => $key,
@@ -184,7 +184,7 @@ class Setting extends \yii\base\Component {
 					] )->execute();
 		} else {
 			$command = Yii::$app->getDb()->createCommand (
-					"UPDATE {{%" . $this->setting_table . "}} SET [[value]]=:value WHERE [[category]]=:cat AND [[key]]=:key",
+					"UPDATE {{%" . $this->settingTable . "}} SET [[value]]=:value WHERE [[category]]=:cat AND [[key]]=:key",
 					[
 						':cat' => $category,
 						':key' => $key,
@@ -199,11 +199,10 @@ class Setting extends \yii\base\Component {
 	 */
 	public function commit() {
 		$this->_cacheFlush = array ();
-
-		if (count ( $this->_deleteCategoriesFromDatabase ) > 0) {
-			foreach ( $this->_deleteCategoriesFromDatabase as $catName ) {
+		if (count ( $this->_catToBeDel ) > 0) {
+			foreach ( $this->_catToBeDel as $catName ) {
 				$command = Yii::$app->getDb()->createCommand (
-					"DELETE FROM {{%" . $this->setting_table . "}} WHERE [[category]]=:cat", [
+					"DELETE FROM {{%" . $this->settingTable . "}} WHERE [[category]]=:cat", [
 						':cat' => $catName
 					] )->execute();
 				$this->_cacheFlush [] = $catName;
@@ -228,7 +227,7 @@ class Setting extends \yii\base\Component {
 				$names = implode ( ',', array_keys ( $params ) );
 
 				$command = Yii::$app->getDb()->createCommand(
-						"DELETE FROM {{%" . $this->setting_table . "}} WHERE [[category]]=:cat AND [[key]] IN ($names)", [
+						"DELETE FROM {{%" . $this->settingTable . "}} WHERE [[category]]=:cat AND [[key]] IN ($names)", [
 						':cat' => $catName
 				]);
 				foreach ( $params as $key => $value )
@@ -239,6 +238,7 @@ class Setting extends \yii\base\Component {
 			}
 		}
 
+		/** @FIXME: Switch to batch mode... **/
 		if (count ( $this->_toBeSave ) > 0) {
 			foreach ( $this->_toBeSave as $catName => $keyValues ) {
 				foreach ( $keyValues as $k => $v )

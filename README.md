@@ -35,6 +35,19 @@ In your configuration file, add the setting component.
 ]
 ```
 
+You can choose which table to store the setting item, which will be auto-generate on demand.
+
+```php
+'components' => [
+	...
+	'setting' => [
+		'class' => 'dinhtrung\setting\Setting',
+		'setting_table' => 'website_setting',
+	]
+	...
+]
+```
+
 In anywhere from your code, you can use those features:
 
 ```php
