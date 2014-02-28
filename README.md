@@ -25,7 +25,31 @@ to the require section of your `composer.json` file.
 Usage
 -----
 
-Once the extension is installed, simply use it in your code by  :
+In your configuration file, add the setting component.
 
 ```php
-<?= \dinhtrung\setting\AutoloadExample::widget(); ?>```
+'components' => [
+	...
+	'setting' => 'dinhtrung\setting\Setting',
+	...
+]
+```
+
+In anywhere from your code, you can use those features:
+
+```php
+$setting = Yii::$app->setting->get('category', 'key', 'default value');
+$setting = Yii::$app->setting->set('category', 'key', 'new value');
+```
+
+Or you can query all setting as one
+
+```php
+$settingArray = Yii::$app->setting->get('category', 'key');
+$settingArray = Yii::$app->setting->get('category', 'key', 'default value');
+$settingArray = Yii::$app->setting->set('category', [
+	'key1' => 'value1',
+	'key2' => 'value2',
+	'key3' => 'value3',
+]);
+```
